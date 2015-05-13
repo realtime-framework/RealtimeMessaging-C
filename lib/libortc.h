@@ -103,8 +103,8 @@ int main(void){
 
 /*  API version */
 #define ORTC_SDK_VERSION_MAJOR 2
-#define ORTC_SDK_VERSION_MINOR 2
-#define ORTC_SDK_VERSION_PATCH 2
+#define ORTC_SDK_VERSION_MINOR 1
+#define ORTC_SDK_VERSION_PATCH 1
 
  
 #if __APPLE__
@@ -185,8 +185,6 @@ typedef struct ortc_context {
   int heartbeatActive;
   int heartbeatFails;
   int heartbeatTime;
-  //temporary
-  int danielsBug;
 } ortc_context;
 
 /**

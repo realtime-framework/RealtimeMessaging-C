@@ -160,7 +160,6 @@ void _ortc_parse_message(ortc_context *context, char *message){
     opt = ORTC_SNDBUF_SIZE;
     setsockopt(wsSock, SOL_SOCKET, SO_SNDBUF, (const char*)&opt, sizeof(opt));
 	
-	context->danielsBug = 0;
 	
 	if(context->heartbeatActive){
 		snprintf(hbStr, sizeof(hbStr), "%d;%d;", context->heartbeatTime, context->heartbeatFails);

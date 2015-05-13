@@ -65,7 +65,6 @@ ortc_context* ortc_create_context(void){
   context->heartbeatFails = 3;
   context->heartbeatTime = 15;
   
-  context->danielsBug = 0;
 
   if (0 == slre_compile(&context->reOperation, ORTC_OPERATION_PATTERN)) {
     fprintf(stderr, "slre_compile() failed, returning error (%s) for pattern: %s\n", context->reOperation.err_str, ORTC_OPERATION_PATTERN);
@@ -736,24 +735,24 @@ void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime){
 
 char* ortc_getVersion(void){
     
-  int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR))) + 1;
+    int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR))) + 1;
     len += floor(log10(abs(ORTC_SDK_VERSION_MINOR))) + 1;
     len += floor(log10(abs(ORTC_SDK_VERSION_PATCH))) + 1;
     len += 3;
-
-  char *version = (char *) calloc(len, sizeof(char));
-  sprintf(version, "%d.%d.%d", ORTC_SDK_VERSION_MAJOR, ORTC_SDK_VERSION_MINOR, ORTC_SDK_VERSION_PATCH);
-  return version;
+    
+    char *version = (char *) calloc(len, sizeof(char));
+    sprintf(version, "%d.%d.%d", ORTC_SDK_VERSION_MAJOR, ORTC_SDK_VERSION_MINOR, ORTC_SDK_VERSION_PATCH);
+    return version;
 };
 
 
 char* ortc_getVersionVerbose(void){
-  char *ortc_version = ortc_getVersion();
-  const char *lws_version = lws_get_library_version();
-
-  int len = strlen(ortc_version) + strlen(lws_version) + 50;
-  char *version = (char *) calloc(len, sizeof(char));
-  sprintf(version, "Realtime Messaging SDK version: %s; Libwebsockets version: %s;", ortc_version, lws_version);
-  return version;
-
+    char *ortc_version = ortc_getVersion();
+    const char *lws_version = lws_get_library_version();
+    
+    int len = strlen(ortc_version) + strlen(lws_version) + 50;
+    char *version = (char *) calloc(len, sizeof(char));
+    sprintf(version, "Realtime Messaging SDK version: %s; Libwebsockets version: %s;", ortc_version, lws_version);
+    return version;
+    
 };
