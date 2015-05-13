@@ -80,15 +80,12 @@ void print_help(){
   printf("\n i - is subscribed?, 0 - is connected?, z - get session id");
   printf("\n 1 - enable presence, 3 - enable presence ex, 2 - disable presence");
   printf("\n 2 - disable presence, 4 - disable presence ex, a - save authentication");
-  printf("\n 5 - save authentication ex, h - prints this help.\n");
-  printf("\n v - prints SDK version.\n");
-
+  printf("\n 5 - save authentication ex, h - prints this help, v - prints SDK version.\n");
 }
 
 
 void print_version(){
   printf(" %s \n", ortc_getVersionVerbose());
-
 }
 
 
