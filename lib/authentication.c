@@ -86,7 +86,6 @@ int _ortc_saveAuthRest(char* url, char* authToken, int isPrivate, char* appKey, 
 
     curl_easy_setopt(curl, CURLOPT_URL, aUrl);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
-    //curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, authenticationWriteFunc);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _ortc_writeRestString);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, s);
     res = curl_easy_perform(curl);

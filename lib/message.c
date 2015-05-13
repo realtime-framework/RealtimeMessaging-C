@@ -20,23 +20,11 @@ void _ortc_fire_onMessage(ortc_context *context, char *channel, char *message){
   char *messageR;
   ortc_dnode* t = _ortc_dlist_search(context->channels, channel);
   messageR =  _ortc_escape_sequences_after(message);
-  /*
-    messageR1 = _ortc_replace(message,   "\\\\\\\"", "\"");
-    messageR2 = _ortc_replace(messageR1, "\\\\n", "\n");
-    messageR3 = _ortc_replace(messageR2, "\\\\r", "\r");
-    messageR4 = _ortc_replace(messageR3, "\\\\\\\\", "\\");
-  */
   if(t != NULL){
     if(t->callback != NULL)
       t->callback(context, channel, messageR);
   }
   free(messageR);
-  /*
-    free(messageR1);
-    free(messageR2);
-    free(messageR3);
-    free(messageR4);
-  */
 }
 
 void _ortc_check_if_got_all_parts(ortc_context *context, char* messageId, int iMessageTotal){
@@ -81,15 +69,12 @@ void _ortc_check_if_got_all_parts(ortc_context *context, char* messageId, int iM
 
 void _ortc_parse_message(ortc_context *context, char *message){
   char *messageId, *messageCount, *messageTotal, *messagePart, *channelNameStr, *messageStr, *params, *permissionsStr, *exceptionStr, *validateString, *operationType;
-  size_t     nmatch = 3, nmatch2 = 5;
-  //regmatch_t pmatch[3],  pmatch2[5];
+  //size_t     nmatch = 3, nmatch2 = 5;
   struct cap pmatch[3], pmatch2[5];
   int iMessageTotal, wsSock, opt;
   size_t len, hbLen;
   ortc_dnode *ch;
   char hbStr[24];
-
-  //printf("# %s\n", message);
 
   if(message[0] == 'a') {
     if (slre_match(&context->reMessage, message, (int)strlen(message), pmatch)) {         //is message   
@@ -127,6 +112,9 @@ void _ortc_parse_message(ortc_context *context, char *message){
 	}
 	context->isConnected = 1;
 	context->isConnecting = 0;
+	
+	_ortc_start_threads(context);
+	
 	if(context->reconnecting_loop_active){
 	  context->reconnecting_loop_active = 0;
 	  if(context->onReconnected != NULL){
@@ -172,6 +160,8 @@ void _ortc_parse_message(ortc_context *context, char *message){
     opt = ORTC_SNDBUF_SIZE;
     setsockopt(wsSock, SOL_SOCKET, SO_SNDBUF, (const char*)&opt, sizeof(opt));
 	
+	context->danielsBug = 0;
+	
 	if(context->heartbeatActive){
 		snprintf(hbStr, sizeof(hbStr), "%d;%d;", context->heartbeatTime, context->heartbeatFails);
 		hbLen = strlen(hbStr);
@@ -190,5 +180,8 @@ void _ortc_parse_message(ortc_context *context, char *message){
 	else
 		snprintf(validateString, len, "\"validate;%s;%s;%s;%s;%s;\"", context->appKey, context->authToken, context->announcementSubChannel, context->sessionId, context->metadata);
     _ortc_send_command(context, validateString);
+	
+  } else if(strncmp(message, "c[1000,\"Normal closure\"]", 20)==0){
+	_ortc_exception(context, "Server is about to close the websocket!");
   }
 }

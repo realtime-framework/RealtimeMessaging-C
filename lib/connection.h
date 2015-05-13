@@ -12,4 +12,6 @@ void _ortc_disconnect(ortc_context* context);
 void *_ortc_reconnecting_loop(void *);
 void _ortc_send_command(ortc_context *context, char *message);
 void *_ortc_init_loop(void *ptr);
+int _ortc_start_threads(ortc_context *context);
+int _ortc_do_connect(ortc_context* context);
 #endif  // libortc_h__connection

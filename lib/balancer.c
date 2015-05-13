@@ -83,9 +83,10 @@ int _ortc_parseUrl(char* url, char** host, int* port, int* useSSL){
   if(url[0]=='h' && url[1]=='t' && url[2]=='t' && url[3]=='p' && url[4]=='s' && url[5]==':' && url[6]=='/' && url[7]=='/') { //url starts with https://
     size_t len = strlen(url);
     int idxOfColon = -1;
-    int i = 8;
+    int index = 8;
+      int i = 0;
     *useSSL = 2; 
-    for(i; i < len; i++){
+    for(i = index; i < len; i++){
       if(url[i]==':'){
 	idxOfColon = i;
       }
