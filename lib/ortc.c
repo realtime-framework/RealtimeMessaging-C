@@ -9,6 +9,8 @@
 #include "authentication.h"
 #include "channel.h"
 
+#include <math.h>
+
 
 
 ortc_context* ortc_create_context(void){
@@ -733,7 +735,12 @@ void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime){
 }
 
 char* ortc_getVersion(void){
-  int len = strlen(ORTC_SDK_VERSION_MAJOR) + strlen(ORTC_SDK_VERSION_MINOR) + strlen(ORTC_SDK_VERSION_PATCH);
+    
+  int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR))) + 1;
+    len += floor(log10(abs(ORTC_SDK_VERSION_MINOR))) + 1;
+    len += floor(log10(abs(ORTC_SDK_VERSION_PATCH))) + 1;
+    len += 3;
+
   char *version = (char *) calloc(len, sizeof(char));
   sprintf(version, "%d.%d.%d", ORTC_SDK_VERSION_MAJOR, ORTC_SDK_VERSION_MINOR, ORTC_SDK_VERSION_PATCH);
   return version;
