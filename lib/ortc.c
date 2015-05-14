@@ -261,9 +261,13 @@ void ortc_subscribe(ortc_context* context,
   } else if(!_ortc_isValidInput(context, channel)) {
     _ortc_exception(context, "Channel has invalid characters");
   } else if(_ortc_is_subscribing(context, channel)){
-    _ortc_exception(context, "Already trying to subscribe this channel");
+      char *ex_msg = _ortc_ch_ex_msg("Already trying to subscribe this channel", channel);
+      _ortc_exception(context, ex_msg);
+      free(ex_msg);
   } else if(ortc_is_subscribed(context, channel)){
-    _ortc_exception(context, "Already subscribed to this channel");
+      char *ex_msg = _ortc_ch_ex_msg("Already subscribed to this channel", channel);
+      _ortc_exception(context, ex_msg);
+      free(ex_msg);
   } else if(strlen(channel) > ORTC_CHANNEL_MAX_SIZE){
     _ortc_exception(context, "Channel size exceeds the limit of characters");
   } else if(!onMessage){
@@ -281,7 +285,9 @@ void ortc_unsubscribe(ortc_context* context, char *channel){
   } else if(!_ortc_isValidInput(context, channel)) {
     _ortc_exception(context, "Channel has invalid characters");
   } else if(!ortc_is_subscribed(context, channel)){
-    _ortc_exception(context, "Not subscribed to the channel");
+      char *ex_msg = _ortc_ch_ex_msg("Not subscribed to the channel", channel);
+      _ortc_exception(context, ex_msg);
+      free(ex_msg);
   } else if(strlen(channel) > ORTC_CHANNEL_MAX_SIZE){
     _ortc_exception(context, "Channel size exceeds the limit of characters");
   } else {

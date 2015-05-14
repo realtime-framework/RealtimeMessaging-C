@@ -25,4 +25,6 @@ char* _ortc_prepareConnectionPath();
 void _ortc_random_string(char * string, size_t length);
 char* _ortc_escape_sequences_before(char *string);
 char* _ortc_escape_sequences_after(char *string);
+
+char* _ortc_ch_ex_msg(char *msg, char *channel);
 #endif  // libortc_h__common

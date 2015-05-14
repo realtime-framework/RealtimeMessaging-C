@@ -132,7 +132,6 @@ int main(void){
       break;
     case 's':
       ortc_subscribe(context, DEFAULT_CHANNEL, 1, onMessage);
-      ortc_subscribe(context, "dcm:announcement", 1, onMessage);
       break;
     case 'u':
       ortc_unsubscribe(context, DEFAULT_CHANNEL);
