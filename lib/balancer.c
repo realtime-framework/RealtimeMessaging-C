@@ -56,7 +56,6 @@ int _ortc_getBalancer(char* url, char* appKey, int verifyCA, char** response){
   }
   temp = _ortc_remove(s->ptr, "var SOCKET_SERVER = \"");
   cluster = _ortc_remove(temp, "\";");
-  //printf("Balancer response: %s", cluster);
   free(s->ptr);
   free(s);
   free(temp);
@@ -64,56 +63,83 @@ int _ortc_getBalancer(char* url, char* appKey, int verifyCA, char** response){
   return 0;
 }
 
-int _ortc_parseUrl(char* url, char** host, int* port, int* useSSL){
-  char* temp, *sPort;
-  if(url[0]=='h' && url[1]=='t' && url[2]=='t' && url[3]=='p' && url[4]==':' && url[5]=='/' && url[6]=='/') { //url starts with http://
-    size_t len = strlen(url);
-    *useSSL = 0;
-    *port = 80;
-    temp = (char*)malloc(len - 7 + 1);
-    if(temp == NULL){
-      return -1;
+
+int _ortc_parseEndPoint(char* url, char** host, int* port, int* useSSL, int isSSL){
+    char* temp;
+    char* sPort = NULL;
+    int idx = 0;
+    
+    
+    if (isSSL != 1) {
+        *useSSL = 0;
+        idx = 7;
+    } else {
+        *useSSL = 2;
+        idx = 8;
     }
-    memcpy(temp, &url[7], len - 7);    
-    temp[len - 7] = '\0';
-    *host = temp;
-    return 0;
+    
+    size_t len = strlen(url);
+        int idxOfColon = -1;
+        int index = idx;
+        int i = 0;
+        for(i = index; i < len; i++){
+            if(url[i]==':'){
+                idxOfColon = i;
+            }
+        }
+    
+        if(idxOfColon == -1){
+            if (isSSL != 1) {
+                *port = 80;
+            } else {
+                *port = 443;
+            }
+           
+            temp = (char*)malloc(len - idx + 1);
+            if(temp == NULL){
+                return -1;
+            }
+            memcpy(temp, &url[idx], len - idx);
+            temp[len - idx] = '\0';
+            *host = temp;
+            
+            return 0;
+            
+        } else {
+            temp = (char*)malloc(idxOfColon - idx + 1);
+            if(temp == NULL){
+                return -1;
+            }
+            memcpy(temp, &url[idx], idxOfColon - idx);
+            temp[idxOfColon - idx] = '\0';
+            *host = temp;
+            
+            sPort = (char*)malloc(len - idxOfColon);
+            if(sPort == NULL){
+                free(temp);
+                return -1;
+            }
+            memcpy(sPort, &url[idxOfColon+1], len - idxOfColon);
+            sPort[len - idxOfColon -1] = '\0';
+            *port = atoi(sPort);
+            free(sPort);
+
+            return 0;
+        }
+
+}
+
+
+
+int _ortc_parseUrl(char* url, char** host, int* port, int* useSSL){
+  int ret = -1;
+  if(url[0]=='h' && url[1]=='t' && url[2]=='t' && url[3]=='p' && url[4]==':' && url[5]=='/' && url[6]=='/') { //url starts with http://
+      ret = _ortc_parseEndPoint(url, host, port, useSSL, 0);
   }
   
   if(url[0]=='h' && url[1]=='t' && url[2]=='t' && url[3]=='p' && url[4]=='s' && url[5]==':' && url[6]=='/' && url[7]=='/') { //url starts with https://
-    size_t len = strlen(url);
-    int idxOfColon = -1;
-    int index = 8;
-      int i = 0;
-    *useSSL = 2; 
-    for(i = index; i < len; i++){
-      if(url[i]==':'){
-	idxOfColon = i;
-      }
-    }
-    if(idxOfColon == -1){
-      fprintf(stderr, "wrong url (no port defined)");
-      return -1;
-    }
-    temp = (char*)malloc(idxOfColon - 8 + 1);        
-    if(temp == NULL){
-      return -1;
-    }
-    memcpy(temp, &url[8], idxOfColon - 8);
-    temp[idxOfColon - 8] = '\0';
-    *host = temp;
-
-    sPort = (char*)malloc(len - idxOfColon);
-    if(sPort == NULL){
-      free(temp);
-      return -1;
-    }
-    memcpy(sPort, &url[idxOfColon+1], len - idxOfColon);
-    sPort[len - idxOfColon -1] = '\0';
-    *port = atoi(sPort);
-    free(sPort);
-    *useSSL = 2;    
-    return 0;
+       ret = _ortc_parseEndPoint(url, host, port, useSSL, 1);
   }
-  return -1;
+    
+  return ret;
 }
