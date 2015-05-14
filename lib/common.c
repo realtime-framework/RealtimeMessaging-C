@@ -210,3 +210,10 @@ char* _ortc_escape_sequences_after(char *string){
   free(s8);
   return s9;
 }
+
+char* _ortc_ch_ex_msg(char *msg, char *channel) {
+    int exp_msg_size = strlen(channel) + strlen(msg) + 5;
+    char *exp_msg = (char *) malloc(sizeof(char) * exp_msg_size);
+    sprintf(exp_msg, "%s: %s", msg, channel);
+    return exp_msg;
+}
