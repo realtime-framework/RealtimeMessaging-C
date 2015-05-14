@@ -1,5 +1,10 @@
+#include <sys/time.h>
+
 #include "common.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <curl/curl.h>
 
 void _ortc_exception(ortc_context *context, char *exception){
   if(context->onException)
@@ -120,19 +125,6 @@ char* _ortc_get_from_slre(int groupIdx, struct cap *captures){
   ret[captures[groupIdx].len] = '\0';
   return ret;
 }
-/*
-char* _ortc_get_from_regmatch(char* str, regmatch_t match){
-  int len = match.rm_eo - match.rm_so;
-  char* ret = (char*)malloc(len + 1);
-
-  if(ret == NULL){
-    fprintf(stderr, "malloc() failed in ortc get from regmatch for string: %s\n", str);
-    exit(EXIT_FAILURE);
-  }
-  memcpy(ret, &str[match.rm_so], len);
-  ret[len] = '\0';
-  return ret;
-  }*/
 
 char* _ortc_prepareConnectionPath(){
   int r;
@@ -194,31 +186,7 @@ char* _ortc_escape_sequences_before(char *string){
   free(s8);
   return s9;
 }
-/*
-char* _ortc_escape_sequences_after(char *string){
-  char *s0, *s1, *s2, *s3, *s4, *s5, *s6, *s7, *s8, *s9;
-  s0 = _ortc_replace(string,   "\\\\\\\"", "\"");
-  s1 = _ortc_replace(s0, "\\\\\\\\a", "\a");
-  free(s0);
-  s2 = _ortc_replace(s1, "\\\\b", "\b");
-  free(s1);
-  s3 = _ortc_replace(s2, "\\\\f", "\f");
-  free(s2);
-  s4 = _ortc_replace(s3, "\\\\n", "\n");
-  free(s3);
-  s5 = _ortc_replace(s4, "\\\\r", "\r");
-  free(s4);
-  s6 = _ortc_replace(s5, "\\\\t", "\t");
-  free(s5);
-  s7 = _ortc_replace(s6, "\\\\\\\\v", "\v");
-  free(s6);
-  s8 = _ortc_replace(s7, "\\\\\\\\'", "\'");
-  free(s7);
-  s9 = _ortc_replace(s8, "\\\\\\\\", "\\");
-  free(s8);
-  return s9;
-}
-*/
+
 char* _ortc_escape_sequences_after(char *string){
   char *s0, *s1, *s2, *s3, *s4, *s5, *s6, *s7, *s8, *s9;
   s0 = _ortc_replace(string,   "\\\\\\\"", "\"");

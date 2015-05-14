@@ -99,7 +99,12 @@ int main(void){
 #define ORTC_HEARTBEATMAXTIME 60
 #define ORTC_HEARTBEATMINTIME 10
 #define ORTC_HEARTBEATMAXFAILS 6
-#define ORTC_HEARTBEATMINFAILS 1 
+#define ORTC_HEARTBEATMINFAILS 1
+
+/*  API version */
+#define ORTC_SDK_VERSION_MAJOR 2
+#define ORTC_SDK_VERSION_MINOR 1
+#define ORTC_SDK_VERSION_PATCH 1
 
  
 #if __APPLE__
@@ -114,14 +119,15 @@ int main(void){
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #else
 #include <unistd.h>
+#endif
+
+
+
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#else
 #define Sleep(x) usleep((x)*1000)
 #endif
-/*
-#ifndef _WINDOWS
-#include <unistd.h>
-#define OSleep(x) usleep((x)*1000)
-#endif
-*/
 
 typedef struct ortc_context {
   char* appKey;
@@ -567,5 +573,21 @@ extern void ortc_setHeartbeatFails(ortc_context* context, int newHeartbeatFails)
  * @param heartbeat's interval is seconds
  */	
 extern void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime);	
+
+
+/**
+ * Gets the Realtime SDK version.\n
+ * @return a string with the SDK version
+ */ 
+extern char* ortc_getVersion(void);
+
+
+/**
+ * Gets the Realtime SDK version and other dependencies versions.\n
+ * @return a string with the used versions 
+ */ 
+extern char* ortc_getVersionVerbose(void);
+
+
 	
 #endif  // libortc_h__

@@ -20,7 +20,6 @@ size_t _ortc_writeRestString(void *ptr, size_t size, size_t nmemb, ortc_RestStri
 
 char* _ortc_remove(char* s, char *remove);
 char* _ortc_replace(char *s, char *old, char *newStr);
-//char* _ortc_get_from_regmatch(char* str, regmatch_t match);
 char* _ortc_get_from_slre(int groupIdx, struct cap *captures);
 char* _ortc_prepareConnectionPath();
 void _ortc_random_string(char * string, size_t length);

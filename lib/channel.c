@@ -7,7 +7,7 @@
 void _ortc_save_permissions(ortc_context *context, char *permissions){
   int offset = 0;
   struct slre rePerm; 
-  size_t     nmatch = 3;
+  //size_t     nmatch = 3;
   struct cap pmatch[3];
   char *channel, *hash;
 
@@ -42,7 +42,6 @@ void _ortc_subscribeOnReconnected(ortc_context *context){
     if(ptr->num < 3){
       t = ptr;
       ptr = (ortc_dnode*)ptr->next;
-      //_ortc_dlist_free_dnode(t);
       _ortc_dlist_delete(context->channels, t->id);
     } else {
       _ortc_subscribe(context, ptr->id, 1, 0, (void(*)(ortc_context*, char*, char*))ptr->callback);

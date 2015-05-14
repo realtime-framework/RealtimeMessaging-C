@@ -8,7 +8,6 @@
 #include "libortc.h"
 
 
-
 typedef struct{
   ortc_context *context;
   char *privateKey;

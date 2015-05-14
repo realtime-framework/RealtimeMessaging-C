@@ -96,7 +96,7 @@ struct ortc_dnode* _ortc_dlist_searchEx(ortc_dlist* dl, char* id, int num){
 }
 
 ortc_dnode* _ortc_dlist_searchWild(ortc_dlist* dl, char* id){
-  int offset, i;
+    int offset;
   struct ortc_dnode *ptr = dl->first;
   while(ptr != NULL){
     offset = 0;

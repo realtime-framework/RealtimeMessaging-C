@@ -20,7 +20,6 @@ typedef struct {
 
 ortc_dlist* _ortc_dlist_init();
 void _ortc_dlist_free(ortc_dlist *dlist);
-//struct ortc_dnode * _ortc_dlist_create_dnode(char* id, char* val);
 void _ortc_dlist_insert(ortc_dlist* dl, char* id, char* val1, char* val2, int num, void (*cb)());
 void _ortc_dlist_print(ortc_dlist* dl);
 ortc_dnode* _ortc_dlist_search(ortc_dlist* dl, char* id);

@@ -1,3 +1,4 @@
+#include "libortc.h"
 #include "connection.h"
 #include "balancer.h"
 #include "channel.h"
@@ -72,7 +73,6 @@ static int ortc_callback(struct libwebsocket_context *lws_context,
   case LWS_CALLBACK_CLIENT_RECEIVE:{
     char * message = (char *) in;
     context->heartbeat_counter = 0;
-    //printf(":#: %s\n", message);
     _ortc_parse_message(context, message);
     break;
   }
@@ -95,6 +95,10 @@ static int ortc_callback(struct libwebsocket_context *lws_context,
     context->isDisconnecting = 0;
     break;
   }
+      default : {
+          break;
+      }
+
   }
   return 0;
 }
@@ -152,7 +156,7 @@ void _ortc_stop_loops(ortc_context* context){
     context->init_loop_active = 0;
   }
   if(context->clientHB_loop_active){
-	context->clientHB_loop_active = 0;
+    context->clientHB_loop_active = 0;
   }
 }
 
@@ -160,8 +164,11 @@ void *_ortc_init_loop(void *ptr){
   ortc_context *context;
   context = (ortc_context *) ptr;
   context->thread_counter++;
-  while(context->init_loop_active && _ortc_connect(context) < 0){
+  _ortc_connect(context);
+  while(context->init_loop_active && !context->isConnected){    
     Sleep(ORTC_RECONNECT_INTERVAL*1000);
+    if(!context->isConnected)
+      _ortc_do_connect(context);
   }
   context->init_loop_active = 0;
   context->thread_counter--;
@@ -170,7 +177,7 @@ void *_ortc_init_loop(void *ptr){
 }
 
 void *_ortc_reconnecting_loop(void *ptr){
-  int sec_count = 0;
+  int sec_count = ORTC_RECONNECT_INTERVAL;
   ortc_context *context;
   context = (ortc_context *) ptr;
   context->thread_counter++;
@@ -205,8 +212,10 @@ void *_ortc_heartbeat_loop(void *ptr){
   while(context->heartbeat_loop_active){
     Sleep(1000);
     context->heartbeat_counter++;
-    if(context->heartbeat_counter > ORTC_HEARTBEAT_TIMEOUT){
+    if(context->heartbeat_counter > ORTC_HEARTBEAT_TIMEOUT && context->heartbeat_loop_active){
+      _ortc_exception(context, "Server heartbeat failed!");
       context->connection_loop_active = 0;            
+      context->clientHB_loop_active = 0;
       context->isConnected = 0;
       if(!context->isReconnecting){
 	if(context->onDisconnected != NULL)
@@ -234,15 +243,23 @@ void *_ortc_heartbeat_loop(void *ptr){
 void *_ortc_clientHB_loop(void *ptr){
   int sec_count = 0;
   ortc_context *context;
+  char* hb;
   context = (ortc_context *) ptr;
   context->thread_counter++;
+  if(context->isConnected && context->heartbeatActive){
+    hb = (char*)malloc(sizeof(char) * (strlen("\"b\"")+1));
+    sprintf(hb, "\"b\"");
+    _ortc_send_command(context, hb);
+	}
   while(context->clientHB_loop_active){
 	Sleep(1000);
 	sec_count++;
-	if(sec_count > context->heartbeatTime){
+	if(sec_count >= context->heartbeatTime){
 		sec_count = 0;
 		if(context->isConnected && context->heartbeatActive && context->clientHB_loop_active){
-			_ortc_send_command(context, "\"b\"");
+                  hb = (char*)malloc(sizeof(char) * (strlen("\"b\"")+1));
+                  sprintf(hb, "\"b\"");
+			_ortc_send_command(context, hb);
 		}
 	}
   }
@@ -287,12 +304,15 @@ int _ortc_connect(ortc_context* context){
     return -1;
   }
   _ortc_do_connect(context);
+    return 0;
 }
 
 int _ortc_do_connect(ortc_context* context){
   char *balancerResponse = NULL, *path = NULL;
   int tret;
   
+  context->connection_loop_active = 0;
+
   if(!context->url){//get the url from balancer    
     if(_ortc_getBalancer(context->cluster, context->appKey, context->verifyPeerCert, &balancerResponse)!=0){
       _ortc_exception(context, balancerResponse);
@@ -302,7 +322,7 @@ int _ortc_do_connect(ortc_context* context){
     }
     context->server = strdup(balancerResponse);
     if(_ortc_parseUrl(balancerResponse, &context->host, &context->port, &context->useSSL) < 0){
-      _ortc_exception(context, "malloc() failed!");
+      _ortc_exception(context, "malloc() failed! parsing cluster url");
       free(balancerResponse);
       context->isConnecting = 0;
       return -1;
@@ -311,7 +331,7 @@ int _ortc_do_connect(ortc_context* context){
   } else {//use url provided by user
     context->server = strdup(context->url);
     if(_ortc_parseUrl(context->url, &context->host, &context->port, &context->useSSL) < 0){
-      _ortc_exception(context, "malloc() failed!");
+      _ortc_exception(context, "malloc() failed! parsing user url");
       context->isConnecting = 0;
       return -1;
     }
@@ -321,6 +341,8 @@ int _ortc_do_connect(ortc_context* context){
   if(context->verifyPeerCert && context->useSSL > 0){
 	context->useSSL = 1;
   }
+
+  libwebsocket_cancel_service(context->lws_context);
 
   context->wsi = libwebsocket_client_connect_extended(context->lws_context, context->host, context->port, context->useSSL, path, "", "", "ortc-protocol", -1, context);
   free(path);
@@ -342,6 +364,11 @@ int _ortc_do_connect(ortc_context* context){
     context->isConnecting = 0;
     return -1;
   }
+  return 1;
+}
+
+int _ortc_start_threads(ortc_context *context){
+  int tret;
   tret = pthread_create(&context->throttleThread, NULL, _ortc_throttle_loop, context);
   if(tret!=0){    
     _ortc_exception(context,  "Error creating throttle thread!");
@@ -357,15 +384,15 @@ int _ortc_do_connect(ortc_context* context){
     return -1;
   }
   if(context->heartbeatActive){
-	context->clientHB_loop_active = 1;
-	tret = pthread_create(&context->clientHbThread, NULL, _ortc_clientHB_loop, context);
-	if(tret!=0){    
-		_ortc_exception(context,  "Error creating client heartbeat thread!");
-		context->isConnecting = 0;
-		return -1;
-	}
+    context->clientHB_loop_active = 1;
+    tret = pthread_create(&context->clientHbThread, NULL, _ortc_clientHB_loop, context);
+    if(tret!=0){    
+      _ortc_exception(context,  "Error creating client heartbeat thread!");
+      context->isConnecting = 0;
+      return -1;
+    }
   }
-  return 1;
+  return 0;
 }
 
 void _ortc_send_command(ortc_context *context, char *message){
@@ -391,7 +418,7 @@ void _ortc_send(ortc_context* context, char* channel, char* message){
   size_t len;
   char *hash = _ortc_get_channel_permission(context, channel);
   char messageId[9], sParts[15], sMessageCount[15];
-  int totalParts = 1, messageCount = 0;
+    int messageCount = 0;
   char* messagePart, *m;
   size_t parts = strlen(message) / ORTC_MAX_MESSAGE_SIZE;
 
@@ -402,7 +429,6 @@ void _ortc_send(ortc_context* context, char* channel, char* message){
 
   for(i=0; i<parts; i++){
     size_t messageSize;
-    //char *messageR1, *messageR2, *messageR3, *messageR4;
     char *messageR;
     messageSize = strlen(message) - i * ORTC_MAX_MESSAGE_SIZE;
     if(messageSize > ORTC_MAX_MESSAGE_SIZE)
@@ -421,15 +447,7 @@ void _ortc_send(ortc_context* context, char* channel, char* message){
     messagePart[messageSize] = '\0';
 
     messageR = _ortc_escape_sequences_before(messagePart);
-    /*
-      messageR1 = _ortc_replace(messagePart, "\\", "\\\\");
-      messageR2 = _ortc_replace(messageR1, "\r", "\\r");
-      messageR3 = _ortc_replace(messageR2, "\n", "\\n");
-      messageR4 = _ortc_replace(messageR3, "\"", "\\\"");
-    */
-    //messageR = messageR1;
-    //printf("messR: %s\n", messageR1);
-    //len = 15 + strlen(context->appKey) + strlen(context->authToken) + strlen(channel) + strlen(hash) + strlen(messageId) + strlen(sParts) + strlen(sMessageCount) + messageSize;
+  
     len = 15 + strlen(context->appKey) + strlen(context->authToken) + strlen(channel) + strlen(hash) + strlen(messageId) + strlen(sParts) + strlen(sMessageCount) + strlen(messageR); 
     m = (char*)malloc(len + 1);
     if(m == NULL){

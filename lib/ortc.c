@@ -1,12 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-//#include <unistd.h>
-//#include <getopt.h>
 #include <string.h>
-//#include <signal.h>
-//#include <time.h>
-#include <malloc.h>
-
 #include "libwebsockets.h"
 #include "libortc.h"
 #include "connection.h"
@@ -14,6 +8,8 @@
 #include "common.h"
 #include "authentication.h"
 #include "channel.h"
+
+#include <math.h>
 
 
 
@@ -68,6 +64,7 @@ ortc_context* ortc_create_context(void){
   context->heartbeatActive = 0;
   context->heartbeatFails = 3;
   context->heartbeatTime = 15;
+  
 
   if (0 == slre_compile(&context->reOperation, ORTC_OPERATION_PATTERN)) {
     fprintf(stderr, "slre_compile() failed, returning error (%s) for pattern: %s\n", context->reOperation.err_str, ORTC_OPERATION_PATTERN);
@@ -114,16 +111,7 @@ void ortc_free_context(ortc_context* context){
   while(context->thread_counter>0){
     Sleep(200);
   }
-  /*
-    regfree(&context->reOperation);
-    regfree(&context->rePermissions);
-    regfree(&context->reChannel);
-    regfree(&context->reMessage);
-    regfree(&context->reMultipart);
-    regfree(&context->reException);
-    regfree(&context->reValidUrl);
-    regfree(&context->reValidInput);
-  */
+
   if(context->host)
     free(context->host);
   if(context->server)
@@ -151,7 +139,7 @@ void ortc_set_url(ortc_context* context, char* url){
   context->url = url;
 }
 char* ortc_get_url(ortc_context* context){
-  return context->url;
+  return context->host;
 }
 void ortc_set_connection_metadata(ortc_context* context, char* connection_metadata){
   context->metadata = connection_metadata;
@@ -239,7 +227,6 @@ void ortc_connect(ortc_context* context, char* applicationKey, char* authenticat
   } else {
     context->appKey = applicationKey;
     context->authToken = authenticationToken;
-    //_ortc_connect(context);
     if(context->init_loop_active) return;
     context->init_loop_active = 1;
     tret = pthread_create(&context->initThread, NULL, _ortc_init_loop, context);
@@ -258,8 +245,9 @@ void ortc_disconnect(ortc_context* context){
     _ortc_exception(context,  "Not connected!");
   } else {
     context->isDisconnecting = 1;
-    _ortc_disconnect(context);
+    
   }
+  _ortc_disconnect(context);
 }
 
 void ortc_subscribe(ortc_context* context, 
@@ -734,7 +722,7 @@ void ortc_setHeartbeatFails(ortc_context* context, int newHeartbeatFails){
 		newHeartbeatFails = ORTC_HEARTBEATMINFAILS;
 	if(newHeartbeatFails > ORTC_HEARTBEATMAXFAILS)
 		newHeartbeatFails = ORTC_HEARTBEATMAXFAILS;
-	context->heartbeatFails = ORTC_HEARTBEATMAXFAILS;
+	context->heartbeatFails = newHeartbeatFails;
 }
 
 void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime){
@@ -744,3 +732,27 @@ void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime){
 		newHeartbeatTime = ORTC_HEARTBEATMAXTIME;
 	context->heartbeatTime = newHeartbeatTime;
 }
+
+char* ortc_getVersion(void){
+    
+    int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR))) + 1;
+    len += floor(log10(abs(ORTC_SDK_VERSION_MINOR))) + 1;
+    len += floor(log10(abs(ORTC_SDK_VERSION_PATCH))) + 1;
+    len += 3;
+    
+    char *version = (char *) calloc(len, sizeof(char));
+    sprintf(version, "%d.%d.%d", ORTC_SDK_VERSION_MAJOR, ORTC_SDK_VERSION_MINOR, ORTC_SDK_VERSION_PATCH);
+    return version;
+};
+
+
+char* ortc_getVersionVerbose(void){
+    char *ortc_version = ortc_getVersion();
+    const char *lws_version = lws_get_library_version();
+    
+    int len = strlen(ortc_version) + strlen(lws_version) + 50;
+    char *version = (char *) calloc(len, sizeof(char));
+    sprintf(version, "Realtime Messaging SDK version: %s; Libwebsockets version: %s;", ortc_version, lws_version);
+    return version;
+    
+};
