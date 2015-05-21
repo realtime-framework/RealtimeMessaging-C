@@ -741,13 +741,15 @@ void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime){
 
 char* ortc_getVersion(void){
     
-    int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR))) + 1;
-    len += floor(log10(abs(ORTC_SDK_VERSION_MINOR))) + 1;
-    len += floor(log10(abs(ORTC_SDK_VERSION_PATCH))) + 1;
-    len += 3;
-    
+
+    char *msg = "%d.%d.%d";
+    int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR)));
+    len += floor(log10(abs(ORTC_SDK_VERSION_MINOR)));
+    len += floor(log10(abs(ORTC_SDK_VERSION_PATCH)));
+    len += strlen(msg);
+    len++;
     char *version = (char *) calloc(len, sizeof(char));
-    sprintf(version, "%d.%d.%d", ORTC_SDK_VERSION_MAJOR, ORTC_SDK_VERSION_MINOR, ORTC_SDK_VERSION_PATCH);
+    sprintf(version, msg, ORTC_SDK_VERSION_MAJOR, ORTC_SDK_VERSION_MINOR, ORTC_SDK_VERSION_PATCH);
     return version;
 };
 
@@ -755,10 +757,14 @@ char* ortc_getVersion(void){
 char* ortc_getVersionVerbose(void){
     char *ortc_version = ortc_getVersion();
     const char *lws_version = lws_get_library_version();
+    char *msg = "Realtime Messaging SDK version: %s; Libwebsockets version: %s;";
     
-    int len = strlen(ortc_version) + strlen(lws_version) + 50;
+    int len = strlen(ortc_version) + strlen(lws_version) + strlen(msg) +1;
     char *version = (char *) calloc(len, sizeof(char));
-    sprintf(version, "Realtime Messaging SDK version: %s; Libwebsockets version: %s;", ortc_version, lws_version);
+    sprintf(version, msg, ortc_version, lws_version);
+
+    free(ortc_version);
+
     return version;
     
 };
