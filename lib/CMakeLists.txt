@@ -20,6 +20,10 @@ add_library(ortc SHARED
 					${CMAKE_CURRENT_SOURCE_DIR}/common.c 
 					${CMAKE_CURRENT_SOURCE_DIR}/slre/slre.h
 					${CMAKE_CURRENT_SOURCE_DIR}/slre/slre.c 
+					${CMAKE_CURRENT_SOURCE_DIR}/loops.h 
+					${CMAKE_CURRENT_SOURCE_DIR}/loops.c
+					${CMAKE_CURRENT_SOURCE_DIR}/events.h 
+					${CMAKE_CURRENT_SOURCE_DIR}/events.c 
 				)
 
 add_library(ortc_static STATIC 
@@ -43,6 +47,10 @@ add_library(ortc_static STATIC
 					${CMAKE_CURRENT_SOURCE_DIR}/common.c 
 					${CMAKE_CURRENT_SOURCE_DIR}/slre/slre.h
 					${CMAKE_CURRENT_SOURCE_DIR}/slre/slre.c 
+					${CMAKE_CURRENT_SOURCE_DIR}/loops.h 
+					${CMAKE_CURRENT_SOURCE_DIR}/loops.c 
+					${CMAKE_CURRENT_SOURCE_DIR}/events.h 
+					${CMAKE_CURRENT_SOURCE_DIR}/events.c 
 				)
 
 
