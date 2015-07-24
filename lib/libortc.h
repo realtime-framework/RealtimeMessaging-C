@@ -83,6 +83,7 @@ int main(void){
 #define ORTC_SNDBUF_SIZE 64000
 #define ORTC_MAX_MESSAGE_SIZE 800
 #define ORTC_HEARTBEAT_TIMEOUT 30
+#define ORTC_HANDSHAKE_TIMEOUT 10
 #define ORTC_RECONNECT_INTERVAL 5
 #define ORTC_CONNECTION_METADATA_MAX_SIZE 256
 #define ORTC_CHANNEL_MAX_SIZE 100
@@ -129,6 +130,8 @@ int main(void){
 #define Sleep(x) usleep((x)*1000)
 #endif
 
+enum _ortc_state{DISCONNECTED, CONNECTED, CONNECTING, OPENED, DISCONNECTING, RECONNECTING, QUITTING};
+
 typedef struct ortc_context {
   char* appKey;
   char* authToken;
@@ -152,24 +155,36 @@ typedef struct ortc_context {
   struct slre reException;
   struct slre reValidUrl;
   struct slre reValidInput;
-  pthread_t connectionThread;
-  pthread_t heartbeatThread;
-  pthread_t reconnectingThread;
-  pthread_t throttleThread;
-  pthread_t initThread;
-  pthread_t clientHbThread;
-  int connection_loop_active;
-  int reconnecting_loop_active;
-  int heartbeat_loop_active;
+
   int heartbeat_counter;
-  int init_loop_active;
-  int clientHB_loop_active;
-  int thread_counter;
+  
+  pthread_mutex_t mutex_msg;
+  pthread_mutex_t mutex_cmd;
+  pthread_mutex_t mutex_state;
+  pthread_cond_t  pcond;
+  
+  pthread_t thrdMain;
+  int loop_active_connecting;
+  pthread_t thrdConnecting;
+  int loop_active_communication;
+  pthread_t thrdCommunication;
+  int loop_active_throttle;
+  pthread_t thrdThrottle;
+  int loop_active_serverHeartbeat;
+  pthread_t thrdServerHeartbeat;
+  int loop_active_reconnecting;
+  pthread_t thrdReconnect;
+  int loop_active_clientHeartbeat;
+  pthread_t thrdClientHeartbeat;
+  
+  int virginConnect;
+  
   ortc_dlist *multiparts;
   ortc_dlist *channels;
   ortc_dlist *permissions;
   ortc_dlist *messagesToSend;
   ortc_dlist *ortcCommands;
+  
   void (*onConnected)(struct ortc_context*);
   void (*onDisconnected)(struct ortc_context*);
   void (*onSubscribed)(struct ortc_context*, char*);
@@ -177,14 +192,13 @@ typedef struct ortc_context {
   void (*onException)(struct ortc_context*, char*);
   void (*onReconnecting)(struct ortc_context*);
   void (*onReconnected)(struct ortc_context*);
-  int isConnected;
-  int isConnecting;  
-  int isDisconnecting;
-  int isReconnecting;
+  
   int throttleCounter;
   int heartbeatActive;
   int heartbeatFails;
   int heartbeatTime;
+  enum _ortc_state state;
+  enum _ortc_state stateToBe;
 } ortc_context;
 
 /**

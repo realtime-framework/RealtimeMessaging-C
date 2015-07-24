@@ -1,8 +1,8 @@
 #include "message.h"
 #include "common.h"
-#include "libwebsockets.h"
 #include "channel.h"
 #include "connection.h"
+#include "loops.h"
 
 #include <string.h>
 
@@ -69,33 +69,32 @@ void _ortc_check_if_got_all_parts(ortc_context *context, char* messageId, int iM
 
 void _ortc_parse_message(ortc_context *context, char *message){
   char *messageId, *messageCount, *messageTotal, *messagePart, *channelNameStr, *messageStr, *params, *permissionsStr, *exceptionStr, *validateString, *operationType;
-  //size_t     nmatch = 3, nmatch2 = 5;
   struct cap pmatch[3], pmatch2[5];
   int iMessageTotal, wsSock, opt;
   size_t len, hbLen;
   ortc_dnode *ch;
   char hbStr[24];
-
+  
   if(message[0] == 'a') {
     if (slre_match(&context->reMessage, message, (int)strlen(message), pmatch)) {         //is message   
       channelNameStr = _ortc_get_from_slre(1, pmatch);
       messageStr = _ortc_get_from_slre(2, pmatch);
       if(slre_match(&context->reMultipart, messageStr, (int)strlen(messageStr), pmatch2)){
-	messageId =    _ortc_get_from_slre(1, pmatch2);
-	messageCount = _ortc_get_from_slre(2, pmatch2);
-	messageTotal = _ortc_get_from_slre(3, pmatch2);
-	messagePart =  _ortc_get_from_slre(4, pmatch2);
-	iMessageTotal = atoi(messageTotal);
-	if(iMessageTotal > 1){ //multipart message
-	  _ortc_dlist_insert(context->multiparts, messageId, channelNameStr, messagePart, atoi(messageCount), NULL);
-	  _ortc_check_if_got_all_parts(context, messageId, iMessageTotal);
-	} else {
-	  _ortc_fire_onMessage(context, channelNameStr, messagePart);
-	}
-	free(messageId);
-	free(messageCount);
-	free(messageTotal);
-	free(messagePart);
+		messageId =    _ortc_get_from_slre(1, pmatch2);
+		messageCount = _ortc_get_from_slre(2, pmatch2);
+		messageTotal = _ortc_get_from_slre(3, pmatch2);
+		messagePart =  _ortc_get_from_slre(4, pmatch2);
+		iMessageTotal = atoi(messageTotal);
+		if(iMessageTotal > 1){ //multipart message
+			_ortc_dlist_insert(context->multiparts, messageId, channelNameStr, messagePart, atoi(messageCount), NULL);
+		_ortc_check_if_got_all_parts(context, messageId, iMessageTotal);
+		} else {
+			_ortc_fire_onMessage(context, channelNameStr, messagePart);
+		}
+		free(messageId);
+		free(messageCount);
+		free(messageTotal);
+		free(messagePart);
       } else {
         _ortc_fire_onMessage(context, channelNameStr, messageStr);
       }
@@ -105,27 +104,13 @@ void _ortc_parse_message(ortc_context *context, char *message){
       params = _ortc_get_from_slre(2, pmatch);
       operationType = _ortc_get_from_slre(1, pmatch);
       if(strncmp(operationType, "ortc-validated", 14)==0){
-	if(slre_match(&context->rePermissions, params, (int)strlen(params), pmatch2)){
-	  permissionsStr = _ortc_get_from_slre(1, pmatch2);
-	  _ortc_save_permissions(context, permissionsStr);
-	  free(permissionsStr);
-	}
-	context->isConnected = 1;
-	context->isConnecting = 0;
-	
-	_ortc_start_threads(context);
-	
-	if(context->reconnecting_loop_active){
-	  context->reconnecting_loop_active = 0;
-	  if(context->onReconnected != NULL){
-	    context->onReconnected(context);
-	  }
-	  _ortc_subscribeOnReconnected(context);
-	} else {
-	  if(context->onConnected != NULL){
-	    context->onConnected(context);
-	  }
-	}
+		if(slre_match(&context->rePermissions, params, (int)strlen(params), pmatch2)){
+			permissionsStr = _ortc_get_from_slre(1, pmatch2);
+			_ortc_save_permissions(context, permissionsStr);
+			free(permissionsStr);
+		}
+		_ortc_change_state(context, CONNECTED);
+		
       } else if(strncmp(operationType, "ortc-subscribed", 15)==0){
 	if(slre_match(&context->reChannel, params, (int)strlen(params), pmatch2)){
 	  channelNameStr = _ortc_get_from_slre(1, pmatch2);
@@ -146,9 +131,10 @@ void _ortc_parse_message(ortc_context *context, char *message){
 	}
       } else if(strncmp(operationType, "ortc-error", 10)==0){
 	if(slre_match(&context->reException, params, (int)strlen(params), pmatch2)){
-	  exceptionStr = _ortc_get_from_slre(1, pmatch2);
-	  _ortc_exception(context, exceptionStr);
-	  free(exceptionStr);
+		_ortc_cancel_connecting(context);
+		exceptionStr = _ortc_get_from_slre(1, pmatch2);
+		_ortc_exception(context, exceptionStr);
+		free(exceptionStr);
 	}
       }
       free(params);
