@@ -105,7 +105,7 @@ int main(void){
 /*  API version */
 #define ORTC_SDK_VERSION_MAJOR 2
 #define ORTC_SDK_VERSION_MINOR 1
-#define ORTC_SDK_VERSION_PATCH 4
+#define ORTC_SDK_VERSION_PATCH 6
 
  
 #if __APPLE__
