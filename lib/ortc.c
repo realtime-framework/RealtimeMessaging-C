@@ -30,12 +30,20 @@ ortc_context* ortc_create_context(void){
   context->host = NULL;
   context->port = 0;
   context->useSSL = 0;
-  context->connection_loop_active = 0;
-  context->reconnecting_loop_active = 0;
-  context->heartbeat_loop_active = 0;
-  context->init_loop_active = 0;
+
   context->heartbeat_counter = 0;
-  context->thread_counter = 0;
+  context->virginConnect = 0;
+  
+  pthread_mutex_init(&context->mutex_msg, NULL);
+  pthread_mutex_init(&context->mutex_cmd, NULL);
+  pthread_mutex_init(&context->mutex_state, NULL);
+  pthread_cond_init(&context->pcond, NULL);
+  
+  context->loop_active_throttle = 0;
+  context->loop_active_communication = 0;
+  context->loop_active_connecting = 0;
+  context->loop_active_reconnecting = 0;
+  context->loop_active_serverHeartbeat = 0;
   
   context->verifyPeerCert = 1;
 
@@ -55,17 +63,13 @@ ortc_context* ortc_create_context(void){
   context->onReconnecting = NULL;
   context->onReconnected = NULL;
   
-  context->isConnected = 0;
-  context->isConnecting = 0;
-  context->isDisconnecting = 0;
-  context->isReconnecting = 0;
   context->throttleCounter = 0;
   
   context->heartbeatActive = 0;
   context->heartbeatFails = 3;
   context->heartbeatTime = 15;
+  context->state = DISCONNECTED;
   
-
   if (0 == slre_compile(&context->reOperation, ORTC_OPERATION_PATTERN)) {
     fprintf(stderr, "slre_compile() failed, returning error (%s) for pattern: %s\n", context->reOperation.err_str, ORTC_OPERATION_PATTERN);
     exit(EXIT_FAILURE);
@@ -103,15 +107,18 @@ ortc_context* ortc_create_context(void){
 
   lws_set_log_level(0 /*7*/, NULL);
 
+  _ortc_init_main_thread(context);
+  
   return context;
 }
 
 void ortc_free_context(ortc_context* context){  
-  _ortc_stop_loops(context);
-  while(context->thread_counter>0){
-    Sleep(200);
-  }
-
+  _ortc_quit_main_thread(context);
+  pthread_mutex_destroy(&context->mutex_state);
+  pthread_cond_destroy(&context->pcond);
+  pthread_mutex_destroy(&context->mutex_msg);
+  pthread_mutex_destroy(&context->mutex_cmd);
+  
   if(context->host)
     free(context->host);
   if(context->server)
@@ -121,7 +128,7 @@ void ortc_free_context(ortc_context* context){
   _ortc_dlist_free(context->permissions);
   _ortc_dlist_free(context->messagesToSend);
   _ortc_dlist_free(context->ortcCommands);
-  context->isDisconnecting = 1;
+
   if(context->lws_context != NULL)
     libwebsocket_context_destroy(context->lws_context);
   context->lws_context = NULL;
@@ -163,7 +170,7 @@ void ortc_enable_ca_verification(ortc_context* context){
 	context->verifyPeerCert = 1;
 }
 int ortc_is_connected(ortc_context* context){
-  return context->isConnected;
+  return context->state == CONNECTED;
 }
 int ortc_is_subscribed(ortc_context* context, char* channel){
   ortc_dnode *t = _ortc_dlist_search(context->channels, channel);
@@ -204,8 +211,10 @@ void ortc_set_onUnsubscribed(ortc_context* context, void (*onUnsubscribed)(ortc_
 
 void ortc_connect(ortc_context* context, char* applicationKey, char* authenticationToken){
   int tret;
-  if(context->isConnected){
+  if(context->state == CONNECTED){
     _ortc_exception(context, "Already connected");
+  } else if (context->state != DISCONNECTED){
+	_ortc_exception(context, "Already trying to connect");
   } else if (!context->url && !context->cluster){
     _ortc_exception(context, "URL and Cluster URL are null or empty");
   } else if (!applicationKey || strlen(applicationKey)==0) {
@@ -227,34 +236,23 @@ void ortc_connect(ortc_context* context, char* applicationKey, char* authenticat
   } else {
     context->appKey = applicationKey;
     context->authToken = authenticationToken;
-    if(context->init_loop_active) return;
-    context->init_loop_active = 1;
-    tret = pthread_create(&context->initThread, NULL, _ortc_init_loop, context);
-    if(tret!=0){
-      _ortc_exception(context,  "Error creating init thread!");
-    }
+	_ortc_init_connection(context);
   }
 }
 
 void ortc_disconnect(ortc_context* context){
-  if(context->isConnected==0){    
-    if(context->init_loop_active){
-      context->init_loop_active = 0;
-      return;
-    }
-    _ortc_exception(context,  "Not connected!");
+  if(context->state != DISCONNECTED){    
+    _ortc_disconnect(context);
   } else {
-    context->isDisconnecting = 1;
-    
+    _ortc_exception(context,  "Not connected!"); 
   }
-  _ortc_disconnect(context);
 }
 
 void ortc_subscribe(ortc_context* context, 
 		    char *channel, 
 		    int subscribeOnReconnected, 
 		    void (*onMessage)(ortc_context*, char*, char*)){
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!channel || strlen(channel)==0){
     _ortc_exception(context, "Channel is null or empty");
@@ -278,7 +276,7 @@ void ortc_subscribe(ortc_context* context,
 }
 
 void ortc_unsubscribe(ortc_context* context, char *channel){
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!channel || strlen(channel)==0){
     _ortc_exception(context, "Channel is null or empty");
@@ -296,7 +294,7 @@ void ortc_unsubscribe(ortc_context* context, char *channel){
 }
 
 void ortc_send(ortc_context* context, char *channel, char *message){
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!channel || strlen(channel)==0){
     _ortc_exception(context, "Channel is null or empty");
@@ -320,7 +318,7 @@ void ortc_enable_presence(ortc_context* context,
   ortc_presenceParams *p;
   int ret;
 
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!channel || strlen(channel)==0){
     _ortc_exception(context, "Channel is null or empty");
@@ -422,7 +420,7 @@ void ortc_disable_presence(ortc_context* context,
   ortc_presenceParams *p;
   int ret;
 
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!channel || strlen(channel)==0){
     _ortc_exception(context, "Channel is null or empty");
@@ -516,7 +514,7 @@ void ortc_presence(ortc_context* context,
   ortc_presenceParams *p;
   int ret;
 
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!channel || strlen(channel)==0){
     _ortc_exception(context, "Channel is null or empty");
@@ -610,7 +608,7 @@ void ortc_save_authentication(ortc_context *context,
   ortc_authenticationParams *p;
   int ret;
 
-  if(!context->isConnected){
+  if(context->state != CONNECTED){
     _ortc_exception(context, "Not connected");
   } else if(!permissions){
     _ortc_exception(context, "Channel permissions are empty");
@@ -740,8 +738,6 @@ void ortc_setHeartbeatTime(ortc_context* context, int newHeartbeatTime){
 }
 
 char* ortc_getVersion(void){
-    
-
     char *msg = "%d.%d.%d";
     int len = floor(log10(abs(ORTC_SDK_VERSION_MAJOR)));
     len += floor(log10(abs(ORTC_SDK_VERSION_MINOR)));

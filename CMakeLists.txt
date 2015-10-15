@@ -36,7 +36,7 @@ include_directories("${CURL_INCLUDE_DIRS}")
 
 #libwebsockets
 find_library(LWS_LIBRARIES
-  NAMES libwebsockets.a websockets websockets_static 
+  NAMES libwebsockets.a websockets websockets_static libwebsockets_shared
   HINTS "${LWS_LIB_DIR}" "$ENV{LIBWEBSOCKETS_LIB}"
   )
 if(NOT LWS_LIBRARIES)

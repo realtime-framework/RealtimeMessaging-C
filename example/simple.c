@@ -30,6 +30,9 @@ void onSubscribed(ortc_context *context, char* channel){
   ortc_send(context, "yellow", "Message from simple.c");
 }
 
+void onException(ortc_context *context, char* exception){
+  printf("::Exception: %s!!!\n", exception);
+}
 
 int main(void){
   ortc_context *context;
@@ -42,6 +45,7 @@ int main(void){
   ortc_set_onConnected   (context, onConnected);
   ortc_set_onDisconnected(context, onDisconnected);
   ortc_set_onSubscribed  (context, onSubscribed);
+  ortc_set_onException   (context, onException);
 
   ortc_connect(context, ORTC_APP_KEY, ORTC_AUTH_TOKEN);
 
