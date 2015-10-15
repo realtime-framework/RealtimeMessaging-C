@@ -528,7 +528,7 @@ int _ortc_open_socket(ortc_context* context){
 		return -1;
 	}
   
-	#if !defined(WIN32) && !defined(_WIN32) && !defined(__APPLE__)
+    #if !defined(WIN32) && !defined(_WIN32) && !defined(__APPLE__) && defined(TCP_CORK)
 		int wsSock = libwebsocket_get_socket_fd(context->wsi);
 		int opt = 1;
 		setsockopt(wsSock, IPPROTO_TCP, TCP_CORK, &opt, sizeof(opt));
