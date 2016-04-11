@@ -173,14 +173,16 @@ void _ortc_dlist_deleteEx(ortc_dlist* dl, char* id, int num){
     ptr = dl->first->next;
     while(ptr != NULL){
       if(strcmp(id, ptr->id) == 0 && num == ptr->num){
-	prev->next = ptr->next;
-	if(dl->last == ptr)
-	  dl->last = prev;	
-	_ortc_dlist_free_dnode(ptr);
-	dl->count--;
-      }
-      prev = ptr;
-      ptr = ptr->next;      
+      	prev->next = ptr->next;
+      	if(dl->last == ptr)
+      	  dl->last = prev;	
+      	_ortc_dlist_free_dnode(ptr);
+        ptr = NULL;
+      	dl->count--;
+      } else {
+        prev = ptr;
+        ptr = ptr->next;
+      }      
     }
   }
 }
